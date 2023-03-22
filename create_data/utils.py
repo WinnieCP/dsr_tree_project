@@ -8,7 +8,7 @@ import os
 import rasterio
 import rasterio.features
 import rasterio.warp
-
+import retry
 
 def add_new_crs_to_df(df, crs):
     '''
