@@ -174,7 +174,6 @@ def get_grid_tiles(image, params):
     return tiles
 
 @retry(tries=10, delay=1, backoff=2)
-
 def getResult(index, params, tile):
     if params['format'] in ['png', 'jpg']:
         url = image.getThumbURL(
