@@ -9,6 +9,8 @@ import rasterio
 import rasterio.features
 import rasterio.warp
 from retry import retry
+from types import SimpleNamespace
+import multiprocessing
 
 def add_new_crs_to_df(df, crs):
     '''
@@ -140,7 +142,7 @@ def download_image_tiles_from_ee(center,
         processes = len(tiles)
       print(f'starting {processes} processes')
       pool = multiprocessing.Pool(processes)
-      pool.starmap(getResult, zip(range(len(tiles)),[params]*len(tiles), tiles)) # this might not work
+      pool.starmap(getResult, zip([image]*len(tiles), range(len(tiles)),[params]*len(tiles), tiles)) # this might not work
       pool.close()
     return tiles, params
     
@@ -174,7 +176,7 @@ def get_grid_tiles(image, params):
     return tiles
 
 @retry(tries=10, delay=1, backoff=2)
-def getResult(index, params, tile):
+def getResult(image, index, params, tile):
     if params['format'] in ['png', 'jpg']:
         url = image.getThumbURL(
             {
@@ -207,4 +209,5 @@ def getResult(index, params, tile):
     with open(filename, 'wb') as out_file:
         shutil.copyfileobj(r.raw, out_file)
     print("Done: ", basename)
+
 
