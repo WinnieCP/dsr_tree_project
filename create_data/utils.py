@@ -80,7 +80,8 @@ def download_image_tiles_from_ee(center,
                                  channels = ['R', 'G', 'B'],
                                  processes = 25,
                                  format = 'GEO_TIFF',
-                                 prefix = 'tile_'
+                                 prefix = 'tile_',
+                                 preview_only = False
                                  ):
     '''
     Downloads a grid of tiles from the Google Earth engine Image 'Germany/Brandenburg/orthos/20cm'
@@ -96,6 +97,8 @@ def download_image_tiles_from_ee(center,
         out_dir:    str, path to folder where to save the generated tiles
         channels:   list of str, entry can be 'R', 'G', 'B', 'N' 
         format:     string, 'GEO_TIFF' or 'png','jpg'
+        prefix:     prefix of the downloaded image tiles
+        preview_only: No download, just returns the tiles for visualizing
     '''
 
     # check input
@@ -134,16 +137,17 @@ def download_image_tiles_from_ee(center,
                 }
     
     tiles = get_grid_tiles(image, params)
-    if len(tiles)==1:
-      getResult(0, params, tiles[0])
-    else:
-      processes = params['processes']
-      if len(tiles) < processes:
-        processes = len(tiles)
-      print(f'starting {processes} processes')
-      pool = multiprocessing.Pool(processes)
-      pool.starmap(getResult, zip([image]*len(tiles), range(len(tiles)),[params]*len(tiles), tiles)) # this might not work
-      pool.close()
+    if not preview_only:
+        if len(tiles)==1:
+            getResult(0, params, tiles[0])
+        else:
+            processes = params['processes']
+            if len(tiles) < processes:
+            processes = len(tiles)
+            print(f'starting {processes} processes')
+            pool = multiprocessing.Pool(processes)
+            pool.starmap(getResult, zip([image]*len(tiles), range(len(tiles)),[params]*len(tiles), tiles)) # this might not work
+            pool.close()
     return tiles, params
     
 def get_grid_tiles(image, params):
