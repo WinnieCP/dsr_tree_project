@@ -143,7 +143,7 @@ def download_image_tiles_from_ee(center,
         else:
             processes = params['processes']
             if len(tiles) < processes:
-            processes = len(tiles)
+                processes = len(tiles)
             print(f'starting {processes} processes')
             pool = multiprocessing.Pool(processes)
             pool.starmap(getResult, zip([image]*len(tiles), range(len(tiles)),[params]*len(tiles), tiles)) # this might not work
