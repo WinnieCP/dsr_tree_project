@@ -81,7 +81,11 @@ def download_image_tiles_from_ee(center,
                                  processes = 25,
                                  format = 'GEO_TIFF',
                                  prefix = 'tile_',
-                                 preview_only = False
+                                 preview_only = False,
+                                 min_num_trees = None,
+                                 path_to_tree_data = None,
+                                 min_kronedurch = 0,
+                                 only_tiles_with_medium_amount_of_labels = False
                                  ):
     '''
     Downloads a grid of tiles from the Google Earth engine Image 'Germany/Brandenburg/orthos/20cm'
@@ -114,12 +118,14 @@ def download_image_tiles_from_ee(center,
         img_dim=[img_dim, img_dim]
     else:
         assert len(img_dim)==2, img_dim_error
-    
-    # specify the image from Earth Engine from which to generate the tiles
-    image = (
-        ee.Image("Germany/Brandenburg/orthos/20cm")
-        .select(channels)
-    )
+
+    if min_num_trees is not None:
+        assert path_to_tree_data is not None, 'If min_num_trees is set, path_to_tree_data must also be given.'
+        assert not only_tiles_with_medium_amount_of_labels, 'If min_num_trees is set, only_tiles_with_medium_amount_of_labels needs to be False.'
+
+    if only_tiles_with_medium_amount_of_labels:
+        assert path_to_tree_data is not None, 'If min_num_trees is set, path_to_tree_data must also be given.'
+        assert min_num_trees is None, 'If only_tiles_with_medium_amount_of_labels, then min_num_trees needs to be None.'
 
     params = {'rows' : rows,
                 'cols' : cols,
@@ -133,10 +139,22 @@ def download_image_tiles_from_ee(center,
                 'format' : format,
                 'prefix' : prefix,
                 'dimensions': f'{img_dim[0]}x{img_dim[1]}',
-                'count' : cols*rows
+                'count' : cols*rows,
+                'min_num_trees' : min_num_trees,
+                'path_to_tree_data' : path_to_tree_data,
+                'min_kronedurch' : min_kronedurch,
+                'only_tiles_with_medium_amount_of_labels' : only_tiles_with_medium_amount_of_labels
                 }
     
+    # specify the image from Earth Engine from which to generate the tiles
+    image = (
+        ee.Image("Germany/Brandenburg/orthos/20cm")
+        .select(channels)
+    )
+
     tiles = get_grid_tiles(image, params)
+    
+    # download the tiles if required
     if not preview_only:
         if len(tiles)==1:
             getResult(0, params, tiles[0])
@@ -148,21 +166,40 @@ def download_image_tiles_from_ee(center,
             pool = multiprocessing.Pool(processes)
             pool.starmap(getResult, zip([image]*len(tiles), range(len(tiles)),[params]*len(tiles), tiles)) # this might not work
             pool.close()
+
     return tiles, params
     
 def get_grid_tiles(image, params):
 
-    p = SimpleNamespace(**params)
+    # make all variables in params accessible through p.<variable name>
+    p = SimpleNamespace(**params) 
 
-    # create a grid in meters around the center point
+    # get properties of the image projection
     projection = image.projection()
     img_scale = projection.nominalScale().getInfo() # width of 1 pixel
-    grid_step_in_m = [dim * (1 - p.rel_overlap) * img_scale for dim in p.img_dim]
 
+    # convert lon, lat coordinates of center to crs of image
     center_point = ee.Geometry.Point(p.center).transform(projection.crs()).getInfo()['coordinates']
+
+    # create a grid of points around the given center point (in meters)
+    # each of these points will be the center of a (potential) tile
+    grid_step_in_m = [dim * (1 - p.rel_overlap) * img_scale for dim in p.img_dim]
     lon_list = center_point[0]+(np.arange(p.cols)-p.cols/2+1/2)*grid_step_in_m[0]
     lat_list = center_point[1]+(np.arange(p.rows)-p.rows/2+1/2)*grid_step_in_m[1]
     point_list = np.array(np.meshgrid(lon_list, lat_list)).reshape(2,-1).T
+
+    # if required, filter out points around which the tile does not 
+    # include sufficient number of trees
+    if p.min_num_trees is not None or p.only_tiles_with_medium_amount_of_labels:
+        # Determine number of trees per tile
+        trees_per_tile = get_trees_per_tile(point_list, projection,
+                                             grid_step_in_m, lon_list, 
+                                             lat_list, params)
+        # filter the list of potential tile centers based on the requirements on 
+        # number of trees in the tile
+        point_list = filter_tiles(point_list, trees_per_tile, params)
+
+    # generate the tiles
     tiles = [ee.Geometry.Polygon(
       [
         [
@@ -178,6 +215,69 @@ def get_grid_tiles(image, params):
       ) for lon, lat in point_list]
 
     return tiles
+
+def filter_tiles(point_list, trees_per_tile, params):
+
+    # make all variables in params accessible through p.<variable name>
+    p = SimpleNamespace(**params)
+
+    if p.min_num_trees is not None:
+        # filter based on minimal required number of trees per tile
+        point_list = point_list[trees_per_tile>=p.min_num_trees]
+
+    if p.only_tiles_with_medium_amount_of_labels:
+        # filter such that the tiles with a tree count
+        # in the upper and lower 10% of the distribution
+        # of number of trees per tile is excluded
+        # (ignoring tree count 0 in the generation of 
+        # the distribution)
+        cutoff_limits = np.quantile(trees_per_tile[trees_per_tile>0],[0.1,0.9])
+        point_list = point_list[(trees_per_tile<=cutoff_limits[1])&
+                                (trees_per_tile>=cutoff_limits[0])]
+    return point_list
+
+def get_trees_per_tile(pt_list, projection, grid_step_in_m, lon_list, lat_list, params):
+
+    # make all variables in params accessible through p.<variable name>
+    p = SimpleNamespace(**params)
+
+    # read the Baumkataster data
+    df = pd.read_csv(p.path_to_tree_data)
+    if p.min_kronedurch is not None:
+        df = df[df['kronedurch'] >= p.min_kronedurch]
+
+    # add tree positions in the crs of the image
+    df = add_new_crs_to_df(df, projection.crs().getInfo())[['X_crs','Y_crs','kronedurch']]
+
+    # bin the longitude and latitude of each tree in the new crs with bins
+    # given by the tile grid
+    bins_lon = np.hstack([lon_list - grid_step_in_m[0] / 2, lon_list[-1] + grid_step_in_m[0]/2])
+    bins_lat = np.hstack([lat_list - grid_step_in_m[1] / 2, lat_list[-1] + grid_step_in_m[1]/2]) 
+    df['tile_x'] = pd.cut(df['X_crs'], bins = bins_lon, labels = range(len(bins_lon)-1))
+    df['tile_y'] = pd.cut(df['Y_crs'], bins = bins_lat, labels = range(len(bins_lat)-1))
+
+    # determine the number of trees per tile
+    df = df.groupby(['tile_x','tile_y']).count()
+
+    trees_per_tile = np.array([df.loc[(np.argwhere(lon_list==lon),
+                                       np.argwhere(lat_list==lat)),'X_crs']
+                                       for lon, lat in pt_list])
+    return trees_per_tile
+    
+
+def filter_tiles_for_min_tree_number_old(pt_list, projection, grid_step_in_m, params):
+    p = SimpleNamespace(**params)
+    df = pd.read_csv(p.path_to_tree_data)
+    if p.min_kronedurch is not None:
+        df = df[df['kronedurch'] >= p.min_kronedurch]
+    df = add_new_crs_to_df(df, projection.crs().getInfo())[['X_crs','Y_crs','kronedurch']]
+    trees_per_tile = np.array([df[(df['X_crs'] > lon - grid_step_in_m[0] / 2) & 
+                         (df['X_crs'] < lon + grid_step_in_m[0] / 2) &
+                         (df['Y_crs'] > lat - grid_step_in_m[1] / 2) & 
+                         (df['Y_crs'] < lat + grid_step_in_m[1] / 2)].shape[0]
+                         for lon, lat in pt_list])
+    sufficient_trees = trees_per_tile >= p.min_num_trees
+    return pt_list[sufficient_trees]
 
 @retry(tries=10, delay=1, backoff=2)
 def getResult(image, index, params, tile):
