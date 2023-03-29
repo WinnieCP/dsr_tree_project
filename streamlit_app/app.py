@@ -1,7 +1,7 @@
 
 import streamlit as st
 from streamlit_folium import folium_static
-import geemap.eefolium as geemap
+import geemap.foliumap as geemap
 import ee
 import json
 
