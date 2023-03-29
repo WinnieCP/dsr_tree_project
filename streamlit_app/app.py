@@ -3,21 +3,21 @@ import streamlit as st
 from streamlit_folium import folium_static
 import geemap.eefolium as geemap
 import ee
-from google.oauth2 import service_account
-from ee import oauth
+import json
 
 
-def get_auth():
-    service_account_keys = st.secrets['ee_keys']
-    credentials = service_account.Credentials.from_service_account_info(
-        service_account_keys, scopes=oauth.SCOPES)
-    ee.Initialize(credentials)
-    return 'successfully sync to GEE'
-    
-# os.environ["EARTHENGINE_TOKEN"] == st.secrets["EARTHENGINE_TOKEN"]
+# Data from the downloaded JSON file
+json_data = st.secrets["json_data"]
+service_account = st.secrets["service_account"]
 
-"# streamlit geemap demo"
-#st.markdown('Source code: <https://github.com/giswqs/geemap-streamlit/blob/main/geemap_app.py>')
+# Preparing values
+json_object = json.loads(json_data, strict=False)
+json_object = json.dumps(json_object)
+
+# Authorising the app
+credentials = ee.ServiceAccountCredentials(service_account, key_data=json_object)
+ee.Initialize(credentials)
+
 st.title('Trees of Berlin')
 
 with st.echo():
