@@ -27,8 +27,7 @@ with st.echo():
     import ee
 
     map = geemap.Map()
-    image = ee.Image("Germany/Brandenburg/orthos/20cm")
-        .select(['R','G','B'])
+    image = ee.Image("Germany/Brandenburg/orthos/20cm").select(['R','G','B'])
     map.addLayer(image, {}, "Earth Engine")
 
 
