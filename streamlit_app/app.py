@@ -13,7 +13,7 @@ def get_auth():
         service_account_keys, scopes=oauth.SCOPES)
     ee.Initialize(credentials)
     return 'successfully sync to GEE'
-    )
+    
 # os.environ["EARTHENGINE_TOKEN"] == st.secrets["EARTHENGINE_TOKEN"]
 
 "# streamlit geemap demo"
