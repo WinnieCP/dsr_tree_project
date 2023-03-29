@@ -102,7 +102,15 @@ def download_image_tiles_from_ee(center,
         channels:   list of str, entry can be 'R', 'G', 'B', 'N' 
         format:     string, 'GEO_TIFF' or 'png','jpg'
         prefix:     prefix of the downloaded image tiles
-        preview_only: No download, just returns the tiles for visualizing
+        preview_only: No download, just returns the tiles for visualizing,
+        min_num_trees: int, if set only those tiles which contain at least 
+                        min_num_trees trees are returned
+        min_kronedurch: float, if not None, only trees that have an entry for kronedurch which is
+                        larger than min_kronedurch are considered in the filtering of tiles
+        path_to_tree_data: str, path to where the Baumkataster csv lies
+        only_tiles_with_medium_amount_of_labels: filters tiles and returns only those that have a
+                    number of trees from the 10-90%tile of the distribution in the selected area
+
     '''
 
     # check input
@@ -259,25 +267,10 @@ def get_trees_per_tile(pt_list, projection, grid_step_in_m, lon_list, lat_list, 
     # determine the number of trees per tile
     df = df.groupby(['tile_x','tile_y']).count()
 
-    trees_per_tile = np.array([df.loc[(np.argwhere(lon_list==lon),
-                                       np.argwhere(lat_list==lat)),'X_crs']
+    trees_per_tile = np.array([df.loc[(np.argwhere(lon_list==lon)[0][0],
+                                       np.argwhere(lat_list==lat)[0][0]),'X_crs']
                                        for lon, lat in pt_list])
     return trees_per_tile
-    
-
-def filter_tiles_for_min_tree_number_old(pt_list, projection, grid_step_in_m, params):
-    p = SimpleNamespace(**params)
-    df = pd.read_csv(p.path_to_tree_data)
-    if p.min_kronedurch is not None:
-        df = df[df['kronedurch'] >= p.min_kronedurch]
-    df = add_new_crs_to_df(df, projection.crs().getInfo())[['X_crs','Y_crs','kronedurch']]
-    trees_per_tile = np.array([df[(df['X_crs'] > lon - grid_step_in_m[0] / 2) & 
-                         (df['X_crs'] < lon + grid_step_in_m[0] / 2) &
-                         (df['Y_crs'] > lat - grid_step_in_m[1] / 2) & 
-                         (df['Y_crs'] < lat + grid_step_in_m[1] / 2)].shape[0]
-                         for lon, lat in pt_list])
-    sufficient_trees = trees_per_tile >= p.min_num_trees
-    return pt_list[sufficient_trees]
 
 @retry(tries=10, delay=1, backoff=2)
 def getResult(image, index, params, tile):
