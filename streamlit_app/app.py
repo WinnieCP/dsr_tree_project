@@ -20,15 +20,15 @@ ee.Initialize(credentials)
 
 st.title('Trees of Berlin')
 
-with st.echo():
-
-    map = geemap.Map(basemap='HYBRID')
-    # image = ee.Image("Germany/Brandenburg/orthos/20cm").select(['R','G','B'])
-    # map.addLayer(image, {}, "Earth Engine")
 
 
+map = geemap.Map(basemap='HYBRID')
+image = ee.Image("Germany/Brandenburg/orthos/20cm").select(['R','G','B'])
+map.addLayer(image, {}, "Earth Engine")
 
-    map.addLayerControl()
 
-    # call to render Folium map in Streamlit
-    folium_static(map)
+
+map.addLayerControl()
+
+# call to render Folium map in Streamlit
+folium_static(map)
