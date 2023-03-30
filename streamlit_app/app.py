@@ -6,17 +6,17 @@ import ee
 import json
 
 
-# Data from the downloaded JSON file
-#json_data = st.secrets["json_data"]
-#service_account = st.secrets["service_account"]
+json_data = st.secrets["json_data"]
+service_account = st.secrets["service_account"]
+
 # Preparing values
-#json_object = json.loads(json_data, strict=False)
-#service_account = json_object['client_email']
-#json_object = json.dumps(json_object)
+json_object = json.loads(json_data, strict=False)
+service_account = json_object['client_email']
+json_object = json.dumps(json_object)
 
 # Authorising the app
-# credentials = ee.ServiceAccountCredentials(service_account, key_data=json_object)
-# ee.Initialize(credentials)
+credentials = ee.ServiceAccountCredentials(service_account, key_data=json_object)
+ee.Initialize(credentials)
 
 st.title('Trees of Berlin')
 
