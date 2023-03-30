@@ -21,10 +21,6 @@ import json
 st.title('Trees of Berlin')
 
 with st.echo():
-    import streamlit as st
-    from streamlit_folium import folium_static
-    import geemap.eefolium as geemap
-    import ee
 
     map = geemap.Map(basemap='HYBRID')
     # image = ee.Image("Germany/Brandenburg/orthos/20cm").select(['R','G','B'])
