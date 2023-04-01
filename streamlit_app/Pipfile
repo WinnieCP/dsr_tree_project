@@ -8,6 +8,12 @@ streamlit = "*"
 streamlit-folium = "*"
 geemap = "*"
 earthengine-api = "*"
+torch = "*"
+torchvision = "*"
+torchaudio = "*"
+fvcore = "*"
+rasterio = "*"
+opencv-python = "*"
 
 [dev-packages]
 
