@@ -14,20 +14,19 @@ def add_eelayer( map, channels=['R', 'G', 'B'],
     map.addLayer(img, {}, "Earth Engine "+str(channels))
     return img
 
-path_to_secret = '../secrets/trees-in-berlin_for_streamlit.json'
+json_data = st.secrets["json_data"]
+service_account = st.secrets["service_account"]
 
 # Preparing values
-with open(path_to_secret, 'r') as json_data:
-    json_object = json.loads(json_data.read(), strict=False)
-    service_account = json_object['client_email']
-    json_object = json.dumps(json_object)
+json_object = json.loads(json_data, strict=False)
+service_account = json_object['client_email']
+json_object = json.dumps(json_object)
 
 # Authorising the app
 credentials = ee.ServiceAccountCredentials(service_account, key_data=json_object)
-#ee.Initialize(credentials)
+ee.Initialize(credentials)
 
-
-st.title('Trees of Berlin')
+st.title('Trees')
 
 center_pt = [13.42378, 52.535262]
 map = geemap.Map()
