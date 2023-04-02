@@ -1,6 +1,6 @@
 
 import streamlit as st
-from streamlit_folium import folium_static
+from streamlit_folium import folium_static, st_folium
 import geemap.foliumap as geemap
 import ee
 import json
@@ -31,4 +31,13 @@ map.addLayer(image, {}, "Earth Engine")
 map.addLayerControl()
 
 # call to render Folium map in Streamlit
-folium_static(map)
+# folium_static(map)
+
+map_info = st_folium(map, width=700, height=700)
+
+if st.button("detect trees", type="primary"):  
+    # download images around current center of map
+    # predict images with the model
+    # display detected bounding boxes
+
+    st.write(map_info)
