@@ -52,7 +52,7 @@ def predict_trees_for_area(longitude, latitude, predictor, tile_width=1024, tile
         df_list.append(df_tile)
 
         i += 1
-        print('Predicted' + i + 'of' + len(list_tiles) + 'tiles.')
+        print('Predicted ' + str(i) + ' of ' + str(len(list_tiles)) + ' tiles.')
     return pd.concat(df_list, ignore_index=True)
 
 def predict_trees_for_tile(tiff_path, predictor):
