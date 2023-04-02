@@ -1,8 +1,8 @@
 #!pip install torch==1.13.0+cpu torchvision==0.14.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu
 #!python -m pip install 'git+https://github.com/facebookresearch/detectron2.git'
 #or
-#!git clone https://github.com/facebookresearch/detectron2.git
-#!python -m pip install -e detectron2
+!git clone https://github.com/facebookresearch/detectron2.git
+!python -m pip install -e detectron2
 
 import numpy as np
 import pandas as pd
