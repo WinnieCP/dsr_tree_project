@@ -16,7 +16,7 @@ import rasterio.warp
 import cv2
 import os, glob, sys
 
-from utils import download_image_tiles_from_ee
+from dsr_tree_project.create_data.utils import download_image_tiles_from_ee
 
 
 model_weights = '../models/Detectron2/model_final.pth'
@@ -45,11 +45,14 @@ def predict_trees_for_area(longitude, latitude, predictor, tile_width=1024, tile
     list_tiles = [os.path.basename(x) for x in glob.glob(f"{tmp_dir}/*.tif")]
     
     df_list = []
+    i = 0
     for tile in list_tiles:
         tiff_path = os.path.join(tmp_dir, tile)
         df_tile = predict_trees_for_tile(tiff_path, predictor)
         df_list.append(df_tile)
 
+        i += 1
+        print('Predicted' + i + 'of' + len(list_tiles) + 'tiles.')
     return pd.concat(df_list, ignore_index=True)
 
 def predict_trees_for_tile(tiff_path, predictor):
