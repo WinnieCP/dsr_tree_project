@@ -6,7 +6,7 @@ import ee
 import json
 import pandas as pd
 
-from prediction import get_predictor, predict_trees
+from prediction import get_predictor, predict_trees_for_tile, predict_trees_for_area
 
 def add_eelayer( map, channels=['R', 'G', 'B'],
                  ee_name = "Germany/Brandenburg/orthos/20cm"):
@@ -66,7 +66,8 @@ if predict_button:
     first_prediction = False
 
     #predict for a fixed tile
-    df_pred = predict_trees(0,0,predictor)
+    #df_pred = predict_trees_for_tile('../data/tiles/tile_10.tif',predictor)
+    df_pred = predict_trees_for_area(center_pt[0], center_pt[1], predictor)
 
     pred_label_style = {'color': '03fce3ff ', 'width': 2, 'lineType': 'solid', 'fillColor': '00000000'}
     prediction_labels = ee.FeatureCollection([ee.Geometry.Point((x,y)).buffer(d/2).bounds() 
